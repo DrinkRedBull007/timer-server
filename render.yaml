@@ -1,0 +1,24 @@
+# Render 部署配置
+# 访问 https://dashboard.render.com/ 创建 Web Service
+
+services:
+  - type: web
+    name: timer-server
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: CORS_ORIGINS
+        # 修改为你的 GitHub Pages 域名
+        value: https://yourname.github.io,https://yourname.github.io/timer-client
+      - key: USE_REDIS
+        value: false
+      # 如需 Redis，在 Render 创建 Redis 实例并设置环境变量
+      # - key: REDIS_URL
+      #   fromService:
+      #     name: timer-redis
+      #     type: redis
+      #     property: connectionString
