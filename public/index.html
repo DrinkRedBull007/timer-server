@@ -290,6 +290,182 @@
       color: #2ecc71;
     }
     
+    /* 视觉模式 */
+    .vision-mode {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: #000;
+      z-index: 1000;
+      flex-direction: column;
+    }
+    
+    .vision-mode.active {
+      display: flex;
+    }
+    
+    .vision-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 15px;
+      background: rgba(0,0,0,0.8);
+      color: #fff;
+    }
+    
+    .vision-title {
+      font-size: 1rem;
+      font-weight: 600;
+    }
+    
+    .vision-close {
+      background: none;
+      border: none;
+      color: #fff;
+      font-size: 1.5rem;
+      cursor: pointer;
+      padding: 5px 10px;
+    }
+    
+    .vision-container {
+      flex: 1;
+      position: relative;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      overflow: hidden;
+    }
+    
+    .vision-video {
+      max-width: 100%;
+      max-height: 100%;
+      display: none;
+    }
+    
+    .vision-canvas {
+      max-width: 100%;
+      max-height: 100%;
+    }
+    
+    .vision-controls {
+      padding: 15px;
+      background: rgba(0,0,0,0.9);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    
+    .vision-status {
+      text-align: center;
+      font-size: 0.9rem;
+      color: #aaa;
+      margin-bottom: 5px;
+    }
+    
+    .vision-status.ready {
+      color: #2ecc71;
+    }
+    
+    .vision-status.detecting {
+      color: #f39c12;
+      animation: pulse 1s infinite;
+    }
+    
+    .vision-buttons {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    
+    .vision-btn {
+      padding: 12px 20px;
+      border: none;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: all 0.3s;
+      font-weight: 500;
+    }
+    
+    .vision-btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+    
+    .vision-btn-primary {
+      background: linear-gradient(135deg, #00d4ff, #0099cc);
+      color: #fff;
+    }
+    
+    .vision-btn-success {
+      background: linear-gradient(135deg, #2ecc71, #27ae60);
+      color: #fff;
+    }
+    
+    .vision-btn-danger {
+      background: linear-gradient(135deg, #e74c3c, #c0392b);
+      color: #fff;
+    }
+    
+    .vision-btn-secondary {
+      background: rgba(255,255,255,0.1);
+      color: #fff;
+      border: 1px solid rgba(255,255,255,0.3);
+    }
+    
+    .vision-settings {
+      display: flex;
+      gap: 15px;
+      justify-content: center;
+      align-items: center;
+      flex-wrap: wrap;
+      padding: 10px 0;
+      border-top: 1px solid rgba(255,255,255,0.1);
+    }
+    
+    .vision-setting {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .vision-setting label {
+      font-size: 0.85rem;
+      color: rgba(255,255,255,0.7);
+    }
+    
+    .vision-setting input[type="range"] {
+      width: 100px;
+    }
+    
+    .vision-toggle {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      padding: 8px 15px;
+      background: rgba(0,212,255,0.1);
+      border: 1px solid rgba(0,212,255,0.3);
+      border-radius: 20px;
+      color: #00d4ff;
+      font-size: 0.9rem;
+      margin-top: 10px;
+    }
+    
+    .vision-toggle::before {
+      content: '📷';
+      font-size: 1.1rem;
+    }
+    
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+    
     /* 提示消息 */
     .toast {
       position: fixed;
@@ -400,7 +576,15 @@
           <button class="btn btn-secondary" id="resetBtn" onclick="resetTimer()">重置</button>
         </div>
         
-        <div style="margin-top:20px">
+        <!-- 视觉模式入口 -->
+        <div style="margin-top:15px">
+          <div class="vision-toggle" onclick="openVisionMode()">
+            <span>📷</span>
+            <span>视觉识别模式</span>
+          </div>
+        </div>
+        
+        <div style="margin-top:15px">
           <button class="btn btn-secondary" onclick="leaveRoom()">离开房间</button>
         </div>
       </div>
@@ -797,6 +981,192 @@
       setTimeout(() => {
         toast.classList.remove('show');
       }, 3000);
+    }
+  </script>
+
+  <!-- 视觉模式界面 -->
+  <div id="visionMode" class="vision-mode">
+    <div class="vision-header">
+      <span class="vision-title">📷 视觉识别计时</span>
+      <button class="vision-close" onclick="closeVisionMode()">&times;</button>
+    </div>
+    
+    <div class="vision-container">
+      <video id="visionVideo" class="vision-video" autoplay playsinline></video>
+      <canvas id="visionCanvas" class="vision-canvas"></canvas>
+    </div>
+    
+    <div class="vision-controls">
+      <div id="visionStatus" class="vision-status">请设置起跑线和终点线</div>
+      
+      <div class="vision-buttons">
+        <button id="btnSetStart" class="vision-btn vision-btn-primary" onclick="setStartLine()">
+          🟢 设置起跑线
+        </button>
+        <button id="btnSetEnd" class="vision-btn vision-btn-danger" onclick="setEndLine()">
+          🔴 设置终点线
+        </button>
+        <button id="btnStartVision" class="vision-btn vision-btn-success" onclick="startVisionTimer()" disabled>
+          ▶️ 开始检测
+        </button>
+        <button id="btnStopVision" class="vision-btn vision-btn-secondary" onclick="stopVisionTimer()" disabled>
+          ⏹️ 停止
+        </button>
+      </div>
+      
+      <div class="vision-settings">
+        <div class="vision-setting">
+          <label>敏感度:</label>
+          <input type="range" id="sensitivityRange" min="10" max="90" value="30" onchange="updateSensitivity()">
+          <span id="sensitivityValue">30</span>
+        </div>
+        <div class="vision-setting">
+          <label>最小物体:</label>
+          <input type="range" id="minSizeRange" min="50" max="500" value="100" onchange="updateMinSize()">
+          <span id="minSizeValue">100</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 引入视觉识别库 -->
+  <script src="vision-timer.js"></script>
+  <script>
+    // 视觉识别实例
+    let visionTimer = null;
+    
+    // 打开视觉模式
+    async function openVisionMode() {
+      if (!currentRoom) {
+        showToast('请先加入房间');
+        return;
+      }
+      
+      document.getElementById('visionMode').classList.add('active');
+      
+      // 初始化视觉识别
+      visionTimer = new VisionTimer();
+      
+      // 设置回调
+      visionTimer.onStartDetected = () => {
+        console.log('🟢 检测到起跑！');
+        startTimer();
+        showToast('🟢 检测到起跑！');
+        updateVisionStatus('detecting', '检测中 - 等待通过终点线');
+      };
+      
+      visionTimer.onEndDetected = () => {
+        console.log('🔴 检测到终点！');
+        stopTimer();
+        showToast('🔴 检测到终点！');
+        updateVisionStatus('ready', '检测完成 - 准备就绪');
+      };
+      
+      visionTimer.onError = (msg) => {
+        showToast(msg);
+      };
+      
+      // 启动摄像头
+      try {
+        const video = document.getElementById('visionVideo');
+        const canvas = document.getElementById('visionCanvas');
+        await visionTimer.init(video, canvas);
+        updateVisionStatus('ready', '摄像头已启动 - 请设置检测区域');
+      } catch (err) {
+        showToast('摄像头启动失败: ' + err.message);
+        closeVisionMode();
+      }
+    }
+    
+    // 关闭视觉模式
+    function closeVisionMode() {
+      if (visionTimer) {
+        visionTimer.stop();
+        visionTimer = null;
+      }
+      document.getElementById('visionMode').classList.remove('active');
+    }
+    
+    // 设置起跑线
+    function setStartLine() {
+      if (!visionTimer) return;
+      visionTimer.startSettingArea('start');
+      updateVisionStatus('ready', '在画面上拖动绘制起跑线区域');
+      document.getElementById('btnSetStart').textContent = '🟢 绘制中...';
+      
+      // 监听绘制完成
+      const checkInterval = setInterval(() => {
+        if (!visionTimer.isSettingStart) {
+          clearInterval(checkInterval);
+          document.getElementById('btnSetStart').textContent = '🟢 重新设置起跑线';
+          checkVisionReady();
+        }
+      }, 100);
+    }
+    
+    // 设置终点线
+    function setEndLine() {
+      if (!visionTimer) return;
+      visionTimer.startSettingArea('end');
+      updateVisionStatus('ready', '在画面上拖动绘制终点线区域');
+      document.getElementById('btnSetEnd').textContent = '🔴 绘制中...';
+      
+      const checkInterval = setInterval(() => {
+        if (!visionTimer.isSettingEnd) {
+          clearInterval(checkInterval);
+          document.getElementById('btnSetEnd').textContent = '🔴 重新设置终点线';
+          checkVisionReady();
+        }
+      }, 100);
+    }
+    
+    // 检查是否准备就绪
+    function checkVisionReady() {
+      if (visionTimer && visionTimer.startLine && visionTimer.endLine) {
+        document.getElementById('btnStartVision').disabled = false;
+        updateVisionStatus('ready', '✅ 准备就绪 - 可以点击开始检测');
+      }
+    }
+    
+    // 开始视觉检测
+    function startVisionTimer() {
+      if (!visionTimer) return;
+      
+      if (visionTimer.startDetection()) {
+        document.getElementById('btnStartVision').disabled = true;
+        document.getElementById('btnStopVision').disabled = false;
+        updateVisionStatus('detecting', '🔍 检测中 - 等待物体通过起跑线');
+      }
+    }
+    
+    // 停止视觉检测
+    function stopVisionTimer() {
+      if (!visionTimer) return;
+      visionTimer.stopDetection();
+      document.getElementById('btnStartVision').disabled = false;
+      document.getElementById('btnStopVision').disabled = true;
+      updateVisionStatus('ready', '检测已停止');
+    }
+    
+    // 更新状态显示
+    function updateVisionStatus(state, text) {
+      const status = document.getElementById('visionStatus');
+      status.textContent = text;
+      status.className = 'vision-status ' + state;
+    }
+    
+    // 更新敏感度
+    function updateSensitivity() {
+      const val = document.getElementById('sensitivityRange').value;
+      document.getElementById('sensitivityValue').textContent = val;
+      if (visionTimer) visionTimer.sensitivity = parseInt(val);
+    }
+    
+    // 更新最小物体大小
+    function updateMinSize() {
+      const val = document.getElementById('minSizeRange').value;
+      document.getElementById('minSizeValue').textContent = val;
+      if (visionTimer) visionTimer.minObjectSize = parseInt(val);
     }
   </script>
 </body>
