@@ -71,7 +71,3 @@ jobs:
       - name: Output deployed URL
         run: |
           echo "🌐 客户端已部署到: ${{ steps.deployment.outputs.page_url }}"
-
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
