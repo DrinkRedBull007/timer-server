@@ -1,0 +1,55 @@
+# 使用 rsync 部署（更快速，适合大项目）
+name: Deploy Server via Rsync
+
+on:
+  push:
+    branches: [ main, master ]
+    paths:
+      - '/**'
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Add host to known hosts
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H ${{ secrets.SERVER_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Install rsync
+        run: sudo apt-get install -y rsync
+
+      - name: Sync files to server
+        run: |
+          echo "🚀 同步文件到服务器..."
+          rsync -avz --delete \
+            --exclude='node_modules' \
+            --exclude='.git' \
+            --exclude='.env' \
+            --exclude='logs' \
+            -e ssh \
+            ./ \
+            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/opt/timer-server/timer-server/
+
+      - name: Restart service
+        run: |
+          ssh ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} << 'EOF'
+            cd /opt/timer-server/timer-server
+            npm install --production
+            sudo systemctl restart timer-server
+            echo "✅ 服务已重启"
+          EOF
+
+      - name: Verify deployment
+        run: |
+          sleep 3
+          curl -f http://${{ secrets.SERVER_HOST }}:3000/health && echo "✅ 部署验证成功"

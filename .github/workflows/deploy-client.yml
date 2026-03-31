@@ -1,0 +1,70 @@
+# 部署客户端到 GitHub Pages
+name: Deploy Client to GitHub Pages
+
+on:
+  # 推送到 main 分支时触发
+  push:
+    branches: [ main, master ]
+    paths:
+      - 'timer-client/**'
+      - '.github/workflows/deploy-client.yml'
+  
+  # 手动触发
+  workflow_dispatch:
+
+# 设置 GITHUB_TOKEN 权限
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# 并发控制
+concurrency:
+  group: 'pages'
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+
+      # 可选：可以在这里添加构建步骤
+      # - name: Build
+      #   run: |
+      #     cd timer-client
+      #     npm install
+      #     npm run build
+
+      - name: Update Config for Production
+        run: |
+          # 自动更新 config.js 中的服务器地址
+          # 你需要在 GitHub Secrets 中设置 SERVER_URL
+          SERVER_URL="${{ vars.SERVER_URL || 'https://your-server.onrender.com' }}"
+          
+          cat > timer-client/config.js << 'EOF'
+          // 生产环境配置（由 GitHub Actions 自动生成）
+          window.TIMER_CONFIG = {
+            SERVER_URL: '${{ vars.SERVER_URL }}',
+            ENABLE_DEBUG: false
+          };
+          window.TIMER_ENV = 'production';
+          EOF
+          
+          echo "[配置] 服务器地址: ${{ vars.SERVER_URL }}"
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: './timer-client'
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
