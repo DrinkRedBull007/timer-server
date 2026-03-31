@@ -1,0 +1,812 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <title>跨设备计时器</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+    
+    html, body {
+      height: 100%;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+      color: #fff;
+      overflow: hidden;
+    }
+    
+    .container {
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+    
+    /* 头部 */
+    .header {
+      text-align: center;
+      padding: 10px 0;
+    }
+    
+    .header h1 {
+      font-size: 1.5rem;
+      font-weight: 600;
+      letter-spacing: 2px;
+    }
+    
+    .connection-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.8rem;
+      padding: 4px 12px;
+      border-radius: 20px;
+      background: rgba(255,255,255,0.1);
+      margin-top: 8px;
+    }
+    
+    .connection-status::before {
+      content: '';
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #e74c3c;
+      transition: background 0.3s;
+    }
+    
+    .connection-status.connected::before {
+      background: #2ecc71;
+      box-shadow: 0 0 8px #2ecc71;
+    }
+    
+    /* 主内容区 */
+    .main-content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+    }
+    
+    /* 计时器显示 */
+    .timer-display {
+      position: relative;
+      width: 280px;
+      height: 280px;
+      margin: 20px 0;
+    }
+    
+    .timer-ring {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      border: 8px solid rgba(255,255,255,0.1);
+    }
+    
+    .timer-ring.progress {
+      border-color: transparent;
+      border-top-color: #00d4ff;
+      animation: rotate 1s linear infinite;
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+    
+    .timer-ring.progress.active {
+      opacity: 1;
+    }
+    
+    @keyframes rotate {
+      to { transform: rotate(360deg); }
+    }
+    
+    .timer-inner {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      text-align: center;
+    }
+    
+    .timer-value {
+      font-size: 4rem;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: 2px;
+      background: linear-gradient(90deg, #00d4ff, #00ff88);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      line-height: 1;
+    }
+    
+    .timer-value.small {
+      font-size: 2.5rem;
+    }
+    
+    .timer-unit {
+      font-size: 0.9rem;
+      color: rgba(255,255,255,0.5);
+      margin-top: 5px;
+    }
+    
+    .timer-state {
+      position: absolute;
+      bottom: 40px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 0.85rem;
+      padding: 4px 16px;
+      border-radius: 20px;
+      background: rgba(0,0,0,0.3);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    
+    /* 房间信息 */
+    .room-info {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    
+    .room-id {
+      font-size: 2rem;
+      font-weight: 700;
+      letter-spacing: 8px;
+      color: #00d4ff;
+      margin: 10px 0;
+      padding: 10px 20px;
+      background: rgba(0,212,255,0.1);
+      border-radius: 12px;
+      border: 2px solid rgba(0,212,255,0.3);
+    }
+    
+    .room-users {
+      font-size: 0.9rem;
+      color: rgba(255,255,255,0.6);
+    }
+    
+    /* 控制按钮 */
+    .controls {
+      display: flex;
+      gap: 15px;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin-top: 20px;
+    }
+    
+    .btn {
+      padding: 16px 32px;
+      font-size: 1rem;
+      font-weight: 600;
+      border: none;
+      border-radius: 50px;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      min-width: 120px;
+    }
+    
+    .btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+    
+    .btn:active:not(:disabled) {
+      transform: scale(0.95);
+    }
+    
+    .btn-primary {
+      background: linear-gradient(135deg, #00d4ff, #0099cc);
+      color: #fff;
+      box-shadow: 0 4px 20px rgba(0,212,255,0.4);
+    }
+    
+    .btn-primary:hover:not(:disabled) {
+      box-shadow: 0 6px 30px rgba(0,212,255,0.6);
+    }
+    
+    .btn-danger {
+      background: linear-gradient(135deg, #ff4757, #cc3344);
+      color: #fff;
+      box-shadow: 0 4px 20px rgba(255,71,87,0.4);
+    }
+    
+    .btn-secondary {
+      background: rgba(255,255,255,0.1);
+      color: #fff;
+      border: 2px solid rgba(255,255,255,0.2);
+    }
+    
+    /* 表单 */
+    .form-group {
+      width: 100%;
+      max-width: 320px;
+      margin-bottom: 20px;
+    }
+    
+    .form-label {
+      display: block;
+      font-size: 0.9rem;
+      color: rgba(255,255,255,0.7);
+      margin-bottom: 8px;
+    }
+    
+    .form-input {
+      width: 100%;
+      padding: 16px 20px;
+      font-size: 1.1rem;
+      border: 2px solid rgba(255,255,255,0.1);
+      border-radius: 12px;
+      background: rgba(0,0,0,0.2);
+      color: #fff;
+      outline: none;
+      transition: border-color 0.3s;
+    }
+    
+    .form-input:focus {
+      border-color: #00d4ff;
+    }
+    
+    .form-input::placeholder {
+      color: rgba(255,255,255,0.3);
+    }
+    
+    /* 视图切换 */
+    .view {
+      display: none;
+      width: 100%;
+      height: 100%;
+      flex-direction: column;
+    }
+    
+    .view.active {
+      display: flex;
+    }
+    
+    /* 同步精度指示 */
+    .sync-info {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      font-size: 0.7rem;
+      padding: 4px 10px;
+      border-radius: 10px;
+      background: rgba(0,0,0,0.4);
+      color: rgba(255,255,255,0.5);
+    }
+    
+    .sync-info.calibrated {
+      color: #2ecc71;
+    }
+    
+    /* 提示消息 */
+    .toast {
+      position: fixed;
+      bottom: 100px;
+      left: 50%;
+      transform: translateX(-50%) translateY(100px);
+      background: rgba(0,0,0,0.9);
+      color: #fff;
+      padding: 12px 24px;
+      border-radius: 30px;
+      font-size: 0.9rem;
+      opacity: 0;
+      transition: all 0.3s;
+      z-index: 1000;
+      white-space: nowrap;
+    }
+    
+    .toast.show {
+      transform: translateX(-50%) translateY(0);
+      opacity: 1;
+    }
+    
+    /* 用户列表 */
+    .user-list {
+      display: flex;
+      gap: 8px;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin-top: 10px;
+    }
+    
+    .user-badge {
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      background: rgba(255,255,255,0.1);
+    }
+    
+    .user-badge.creator {
+      background: rgba(0,212,255,0.2);
+      border: 1px solid rgba(0,212,255,0.3);
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <!-- 连接状态 -->
+    <div class="header">
+      <h1>⏱️ 同步计时器</h1>
+      <div class="connection-status" id="connectionStatus">未连接</div>
+    </div>
+
+    <!-- 首页视图 -->
+    <div class="view active" id="homeView">
+      <div class="main-content">
+        <div class="form-group">
+          <label class="form-label">你的名字</label>
+          <input type="text" class="form-input" id="userName" placeholder="输入你的名字" maxlength="12">
+        </div>
+        
+        <div style="display:flex;gap:15px;flex-wrap:wrap;justify-content:center;width:100%">
+          <button class="btn btn-primary" onclick="createRoom()">创建房间</button>
+          <button class="btn btn-secondary" onclick="showJoinView()">加入房间</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 加入房间视图 -->
+    <div class="view" id="joinView">
+      <div class="main-content">
+        <div class="form-group">
+          <label class="form-label">房间号</label>
+          <input type="text" class="form-input" id="roomIdInput" placeholder="输入6位房间号" maxlength="6" style="text-transform:uppercase;text-align:center;font-size:1.5rem;letter-spacing:8px">
+        </div>
+        
+        <div class="controls">
+          <button class="btn btn-secondary" onclick="showHomeView()">返回</button>
+          <button class="btn btn-primary" onclick="joinRoom()">加入</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 房间视图 -->
+    <div class="view" id="roomView">
+      <div class="sync-info" id="syncInfo">时间同步中...</div>
+      
+      <div class="room-info">
+        <div style="font-size:0.9rem;color:rgba(255,255,255,0.6)">房间号</div>
+        <div class="room-id" id="roomId">------</div>
+        <div class="room-users" id="roomUsers">0 人在线</div>
+        <div class="user-list" id="userList"></div>
+      </div>
+
+      <div class="main-content">
+        <div class="timer-display">
+          <div class="timer-ring"></div>
+          <div class="timer-ring progress" id="timerRing"></div>
+          <div class="timer-inner">
+            <div class="timer-value" id="timerValue">00:00.00</div>
+            <div class="timer-unit">分:秒.毫秒</div>
+          </div>
+          <div class="timer-state" id="timerState">准备</div>
+        </div>
+
+        <div class="controls" id="timerControls">
+          <button class="btn btn-primary" id="startBtn" onclick="startTimer()">开始计时</button>
+          <button class="btn btn-danger" id="stopBtn" onclick="stopTimer()" disabled>结束计时</button>
+          <button class="btn btn-secondary" id="resetBtn" onclick="resetTimer()">重置</button>
+        </div>
+        
+        <div style="margin-top:20px">
+          <button class="btn btn-secondary" onclick="leaveRoom()">离开房间</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 提示消息 -->
+  <div class="toast" id="toast"></div>
+
+  <!-- Config -->
+  <script src="config.js"></script>
+  <!-- Socket.IO -->
+  <script src="/socket.io/socket.io.js" onerror="loadSocketFromCDN()"></script>
+  <script>
+    // CDN 回退（部署到 GitHub Pages 时使用）
+    function loadSocketFromCDN() {
+      const script = document.createElement('script');
+      script.src = 'https://cdn.socket.io/4.5.4/socket.io.min.js';
+      script.onload = initApp;
+      document.head.appendChild(script);
+    }
+  </script>
+  <script>
+    // ========== 全局状态 ==========
+    let socket = null;
+    let currentRoom = null;
+    let isCreator = false;
+    let timeOffset = 0;        // 与服务器的时间偏移（ms）
+    let timeCalibrated = false;
+    let timerState = 'idle';   // idle, ready, running, paused, finished
+    let startTime = null;      // 服务器计划开始时间
+    let localStartTime = null; // 本地转换后的开始时间
+    let animationFrame = null;
+    let currentElapsed = 0;    // 当前显示的时间（ms）
+
+    // 服务器地址（从配置文件读取）
+    const SERVER_URL = window.TIMER_CONFIG?.SERVER_URL || window.location.origin;
+
+    // ========== 初始化 ==========
+    document.addEventListener('DOMContentLoaded', () => {
+      connect();
+      
+      // 房间号输入自动大写
+      document.getElementById('roomIdInput').addEventListener('input', (e) => {
+        e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+      });
+    });
+
+    // ========== 连接管理 ==========
+    function connect() {
+      socket = io(SERVER_URL);
+
+      socket.on('connect', () => {
+        console.log('[连接] 已连接到服务器');
+        updateConnectionStatus(true);
+        calibrateTime(); // 连接后立即校准时间
+      });
+
+      socket.on('disconnect', () => {
+        console.log('[连接] 已断开');
+        updateConnectionStatus(false);
+        timeCalibrated = false;
+      });
+
+      socket.on('connect_error', (err) => {
+        console.error('[连接] 错误:', err);
+        showToast('连接失败，请检查网络');
+      });
+
+      // 时间同步响应
+      socket.on('time-sync-response', ({ clientTime, serverTime, serverSendTime }) => {
+        const now = Date.now();
+        const rtt = now - clientTime; // 往返时间
+        const offset = serverTime - clientTime - rtt / 2; // 单向延迟补偿
+        
+        timeOffset = offset;
+        timeCalibrated = true;
+        
+        const accuracy = Math.round(rtt / 2);
+        document.getElementById('syncInfo').textContent = `时间精度: ±${accuracy}ms`;
+        document.getElementById('syncInfo').classList.add('calibrated');
+        
+        console.log(`[时间] 校准完成，偏移: ${offset}ms, 精度: ±${accuracy}ms`);
+      });
+
+      // 房间事件
+      socket.on('room-updated', (room) => {
+        currentRoom = room;
+        updateRoomUI(room);
+      });
+
+      socket.on('user-joined', ({ user, userCount }) => {
+        showToast(`${user.name} 加入了房间`);
+      });
+
+      socket.on('user-left', ({ userName, userCount }) => {
+        showToast(`${userName || '有人'} 离开了房间`);
+      });
+
+      // 计时器事件
+      socket.on('timer-ready', ({ serverPlannedStartTime, delay }) => {
+        timerState = 'ready';
+        startTime = serverPlannedStartTime;
+        localStartTime = serverToLocalTime(serverPlannedStartTime);
+        
+        document.getElementById('timerState').textContent = `准备中... ${delay/1000}s`;
+        showToast(`计时将在 ${delay/1000} 秒后开始`);
+        
+        // 显示倒计时
+        let countdown = Math.ceil(delay / 1000);
+        const countdownInterval = setInterval(() => {
+          countdown--;
+          if (countdown > 0) {
+            document.getElementById('timerState').textContent = `准备中... ${countdown}s`;
+          } else {
+            clearInterval(countdownInterval);
+          }
+        }, 1000);
+      });
+
+      socket.on('timer-started', ({ serverStartTime }) => {
+        timerState = 'running';
+        startTime = serverStartTime;
+        localStartTime = serverToLocalTime(serverStartTime);
+        
+        document.getElementById('timerRing').classList.add('active');
+        document.getElementById('timerState').textContent = '计时中';
+        updateTimerControls();
+        
+        // 开始本地动画循环
+        startTimerAnimation();
+      });
+
+      socket.on('timer-stopped', ({ serverEndTime, elapsedTime }) => {
+        timerState = 'finished';
+        
+        // 停止动画
+        if (animationFrame) {
+          cancelAnimationFrame(animationFrame);
+          animationFrame = null;
+        }
+        
+        currentElapsed = elapsedTime;
+        document.getElementById('timerRing').classList.remove('active');
+        document.getElementById('timerState').textContent = '已结束';
+        document.getElementById('timerValue').textContent = formatTime(elapsedTime);
+        
+        updateTimerControls();
+        showToast(`计时结束: ${formatTime(elapsedTime)}`);
+      });
+
+      socket.on('timer-reset', () => {
+        resetLocalTimer();
+        showToast('计时器已重置');
+      });
+
+      // 同步信息（加入时如果正在运行）
+      socket.on('timer-sync', ({ state, serverStartTime, serverCurrentTime, elapsedTime }) => {
+        if (state === 'running') {
+          timerState = 'running';
+          startTime = serverStartTime;
+          localStartTime = serverToLocalTime(serverStartTime);
+          
+          document.getElementById('timerRing').classList.add('active');
+          document.getElementById('timerState').textContent = '计时中（同步）';
+          updateTimerControls();
+          startTimerAnimation();
+          
+          showToast('已同步到正在进行的计时');
+        }
+      });
+    }
+
+    // ========== 时间校准 ==========
+    function calibrateTime() {
+      if (!socket || !socket.connected) return;
+      
+      // 发送多次请求取平均值，提高精度
+      const samples = 5;
+      let offsets = [];
+      
+      for (let i = 0; i < samples; i++) {
+        setTimeout(() => {
+          socket.emit('time-sync-request', Date.now());
+        }, i * 200);
+      }
+    }
+
+    // 服务器时间转本地时间
+    function serverToLocalTime(serverTime) {
+      return serverTime + timeOffset;
+    }
+
+    // 获取当前服务器时间（估计）
+    function getServerNow() {
+      return Date.now() - timeOffset;
+    }
+
+    // ========== 房间操作 ==========
+    function createRoom() {
+      const userName = document.getElementById('userName').value.trim() || '房主';
+      
+      if (!socket || !socket.connected) {
+        showToast('请先等待连接');
+        return;
+      }
+
+      socket.emit('create-room', { userName }, (response) => {
+        if (response.success) {
+          isCreator = true;
+          currentRoom = response.room;
+          enterRoom(response.roomId);
+        } else {
+          showToast(response.error || '创建失败');
+        }
+      });
+    }
+
+    function showJoinView() {
+      document.getElementById('homeView').classList.remove('active');
+      document.getElementById('joinView').classList.add('active');
+      document.getElementById('roomIdInput').focus();
+    }
+
+    function showHomeView() {
+      document.getElementById('joinView').classList.remove('active');
+      document.getElementById('homeView').classList.add('active');
+    }
+
+    function joinRoom() {
+      const roomId = document.getElementById('roomIdInput').value.trim().toUpperCase();
+      const userName = document.getElementById('userName').value.trim() || '访客';
+
+      if (roomId.length !== 6) {
+        showToast('请输入6位房间号');
+        return;
+      }
+
+      if (!socket || !socket.connected) {
+        showToast('请先等待连接');
+        return;
+      }
+
+      socket.emit('join-room', { roomId, userName }, (response) => {
+        if (response.success) {
+          isCreator = response.room.clients.find(c => c.id === response.yourId)?.isCreator || false;
+          currentRoom = response.room;
+          enterRoom(roomId);
+        } else {
+          showToast(response.error || '加入失败');
+        }
+      });
+    }
+
+    function enterRoom(roomId) {
+      document.getElementById('homeView').classList.remove('active');
+      document.getElementById('joinView').classList.remove('active');
+      document.getElementById('roomView').classList.add('active');
+      
+      document.getElementById('roomId').textContent = roomId;
+      
+      if (currentRoom) {
+        updateRoomUI(currentRoom);
+      }
+    }
+
+    function leaveRoom() {
+      if (socket) {
+        socket.emit('leave-room');
+      }
+      
+      resetLocalTimer();
+      currentRoom = null;
+      isCreator = false;
+      
+      document.getElementById('roomView').classList.remove('active');
+      document.getElementById('homeView').classList.add('active');
+    }
+
+    // ========== 计时器控制 ==========
+    function startTimer() {
+      if (!isCreator) {
+        showToast('只有房主可以开始计时');
+        return;
+      }
+
+      socket.emit('timer-prepare-start', { delay: 3000 }, (response) => {
+        if (!response.success) {
+          showToast(response.error || '开始失败');
+        }
+      });
+    }
+
+    function stopTimer() {
+      socket.emit('timer-stop', (response) => {
+        if (!response.success) {
+          showToast(response.error || '停止失败');
+        }
+      });
+    }
+
+    function resetTimer() {
+      if (!isCreator) {
+        showToast('只有房主可以重置');
+        return;
+      }
+
+      socket.emit('timer-reset', (response) => {
+        if (!response.success) {
+          showToast(response.error || '重置失败');
+        }
+      });
+    }
+
+    function resetLocalTimer() {
+      timerState = 'idle';
+      startTime = null;
+      localStartTime = null;
+      currentElapsed = 0;
+      
+      if (animationFrame) {
+        cancelAnimationFrame(animationFrame);
+        animationFrame = null;
+      }
+      
+      document.getElementById('timerValue').textContent = '00:00.00';
+      document.getElementById('timerRing').classList.remove('active');
+      document.getElementById('timerState').textContent = '准备';
+      updateTimerControls();
+    }
+
+    // ========== 计时器动画 ==========
+    function startTimerAnimation() {
+      function update() {
+        if (timerState !== 'running') return;
+        
+        const now = Date.now();
+        const elapsed = now - localStartTime;
+        currentElapsed = Math.max(0, elapsed);
+        
+        document.getElementById('timerValue').textContent = formatTime(currentElapsed);
+        
+        animationFrame = requestAnimationFrame(update);
+      }
+      
+      update();
+    }
+
+    // ========== UI 更新 ==========
+    function updateConnectionStatus(connected) {
+      const status = document.getElementById('connectionStatus');
+      if (connected) {
+        status.textContent = '已连接';
+        status.classList.add('connected');
+      } else {
+        status.textContent = '未连接';
+        status.classList.remove('connected');
+      }
+    }
+
+    function updateRoomUI(room) {
+      document.getElementById('roomUsers').textContent = `${room.clients.length} 人在线`;
+      
+      const userList = document.getElementById('userList');
+      userList.innerHTML = room.clients.map(c => 
+        `<span class="user-badge ${c.isCreator ? 'creator' : ''}">${c.isCreator ? '👑 ' : ''}${c.name}</span>`
+      ).join('');
+      
+      updateTimerControls();
+    }
+
+    function updateTimerControls() {
+      const startBtn = document.getElementById('startBtn');
+      const stopBtn = document.getElementById('stopBtn');
+      const resetBtn = document.getElementById('resetBtn');
+      
+      // 开始按钮：只有房主在 idle 或 finished 状态可用
+      startBtn.disabled = !isCreator || (timerState !== 'idle' && timerState !== 'finished');
+      startBtn.style.display = isCreator ? 'block' : 'none';
+      
+      // 停止按钮：running 状态时可用
+      stopBtn.disabled = timerState !== 'running';
+      
+      // 重置按钮：只有房主在 non-idle 状态可用
+      resetBtn.disabled = !isCreator || timerState === 'idle';
+      resetBtn.style.display = isCreator ? 'block' : 'none';
+    }
+
+    // ========== 工具函数 ==========
+    function formatTime(ms) {
+      const minutes = Math.floor(ms / 60000);
+      const seconds = Math.floor((ms % 60000) / 1000);
+      const milliseconds = Math.floor((ms % 1000) / 10);
+      
+      return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}.${milliseconds.toString().padStart(2, '0')}`;
+    }
+
+    function showToast(message) {
+      const toast = document.getElementById('toast');
+      toast.textContent = message;
+      toast.classList.add('show');
+      
+      setTimeout(() => {
+        toast.classList.remove('show');
+      }, 3000);
+    }
+  </script>
+</body>
+</html>
