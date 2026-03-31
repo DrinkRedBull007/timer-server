@@ -489,16 +489,6 @@ app.get('/api/rooms', async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
-      status: 'running',
-      endpoints: {
-        health: '/health',
-        rooms: '/api/rooms',
-        client: 'https://drinkredbull007.github.io/timer-client'
-      },
-      time: getServerTime()
-    });
-  }
-});
 
 // ==================== 启动 ====================
 
