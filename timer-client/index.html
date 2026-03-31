@@ -412,17 +412,8 @@
 
   <!-- Config -->
   <script src="config.js"></script>
-  <!-- Socket.IO -->
-  <script src="/socket.io/socket.io.js" onerror="loadSocketFromCDN()"></script>
-  <script>
-    // CDN 回退（部署到 GitHub Pages 时使用）
-    function loadSocketFromCDN() {
-      const script = document.createElement('script');
-      script.src = 'https://cdn.socket.io/4.5.4/socket.io.min.js';
-      script.onload = initApp;
-      document.head.appendChild(script);
-    }
-  </script>
+  <!-- Socket.IO - 使用 CDN（支持 GitHub Pages + 独立服务器部署） -->
+  <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
   <script>
     // ========== 全局状态 ==========
     let socket = null;
