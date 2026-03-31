@@ -447,19 +447,27 @@ function getRoomPublicData(room) {
 
 // ==================== HTTP API ====================
 
-// 根路径 - API 信息页
+// 静态文件服务 - 放在 API 路由之前
+const clientPath = path.join(__dirname, 'public');
+app.use(express.static(clientPath));
+
+// 根路径 - 如果存在 index.html 则返回，否则返回 API 信息
 app.get('/', (req, res) => {
-  res.json({
-    name: 'Timer Sync Server',
-    version: '1.0.0',
-    status: 'running',
-    endpoints: {
-      health: '/health',
-      rooms: '/api/rooms',
-      client: 'https://drinkredbull007.github.io/timer-client'
-    },
-    time: getServerTime()
-  });
+  const indexPath = path.join(clientPath, 'index.html');
+  if (require('fs').existsSync(indexPath)) {
+    res.sendFile(indexPath);
+  } else {
+    res.json({
+      name: 'Timer Sync Server',
+      version: '1.0.0',
+      status: 'running',
+      endpoints: {
+        health: '/health',
+        rooms: '/api/rooms'
+      },
+      time: getServerTime()
+    });
+  }
 });
 
 // 健康检查
@@ -481,20 +489,6 @@ app.get('/api/rooms', async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
-
-// 静态文件服务
-const clientPath = path.join(__dirname, '../timer-client');
-app.use(express.static(clientPath));
-
-// 如果访问根路径且存在 index.html，则返回它
-app.get('/', (req, res) => {
-  const indexPath = path.join(clientPath, 'index.html');
-  if (require('fs').existsSync(indexPath)) {
-    res.sendFile(indexPath);
-  } else {
-    res.json({
-      name: 'Timer Sync Server',
-      version: '1.0.0',
       status: 'running',
       endpoints: {
         health: '/health',
