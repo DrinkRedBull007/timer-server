@@ -39,6 +39,9 @@ jobs:
 
       - name: Setup Pages
         uses: actions/configure-pages@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          enablement: true
 
       # 可选：可以在这里添加构建步骤
       # - name: Build
