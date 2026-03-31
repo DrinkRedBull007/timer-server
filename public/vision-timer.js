@@ -193,6 +193,7 @@ class VisionTimer {
   setupDrawingEvents() {
     let isDrawing = false;
     let startX, startY;
+    const canvas = this.canvas; // 保存引用
     
     const onStart = (e) => {
       isDrawing = true;
@@ -231,14 +232,14 @@ class VisionTimer {
       this.removeDrawingEvents();
     };
     
-    this.canvas.addEventListener('mousedown', onStart);
-    this.canvas.addEventListener('mousemove', onMove);
-    this.canvas.addEventListener('mouseup', onEnd);
-    this.canvas.addEventListener('touchstart', (e) => { e.preventDefault(); onStart(e.touches[0]); });
-    this.canvas.addEventListener('touchmove', (e) => { e.preventDefault(); onMove(e.touches[0]); });
-    this.canvas.addEventListener('touchend', onEnd);
+    canvas.addEventListener('mousedown', onStart);
+    canvas.addEventListener('mousemove', onMove);
+    canvas.addEventListener('mouseup', onEnd);
+    canvas.addEventListener('touchstart', (e) => { e.preventDefault(); onStart(e.touches[0]); });
+    canvas.addEventListener('touchmove', (e) => { e.preventDefault(); onMove(e.touches[0]); });
+    canvas.addEventListener('touchend', onEnd);
     
-    this._drawingEvents = { onStart, onMove, onEnd };
+    this._drawingEvents = { onStart, onMove, onEnd, canvas };
   }
 
   /**
@@ -246,10 +247,10 @@ class VisionTimer {
    */
   removeDrawingEvents() {
     if (!this._drawingEvents) return;
-    const { onStart, onMove, onEnd } = this._drawingEvents;
-    this.canvas.removeEventListener('mousedown', onStart);
-    this.canvas.removeEventListener('mousemove', onMove);
-    this.canvas.removeEventListener('mouseup', onEnd);
+    const { onStart, onMove, onEnd, canvas } = this._drawingEvents;
+    canvas.removeEventListener('mousedown', onStart);
+    canvas.removeEventListener('mousemove', onMove);
+    canvas.removeEventListener('mouseup', onEnd);
     this._drawingEvents = null;
   }
 
