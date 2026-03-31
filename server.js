@@ -447,6 +447,21 @@ function getRoomPublicData(room) {
 
 // ==================== HTTP API ====================
 
+// 根路径 - API 信息页
+app.get('/', (req, res) => {
+  res.json({
+    name: 'Timer Sync Server',
+    version: '1.0.0',
+    status: 'running',
+    endpoints: {
+      health: '/health',
+      rooms: '/api/rooms',
+      client: 'https://drinkredbull007.github.io/timer-client'
+    },
+    time: getServerTime()
+  });
+});
+
 // 健康检查
 app.get('/health', (req, res) => {
   res.json({ 
@@ -467,10 +482,29 @@ app.get('/api/rooms', async (req, res) => {
   }
 });
 
-// 静态文件（仅在开发环境使用）
-if (process.env.NODE_ENV !== 'production') {
-  app.use(express.static(path.join(__dirname, '../timer-client')));
-}
+// 静态文件服务
+const clientPath = path.join(__dirname, '../timer-client');
+app.use(express.static(clientPath));
+
+// 如果访问根路径且存在 index.html，则返回它
+app.get('/', (req, res) => {
+  const indexPath = path.join(clientPath, 'index.html');
+  if (require('fs').existsSync(indexPath)) {
+    res.sendFile(indexPath);
+  } else {
+    res.json({
+      name: 'Timer Sync Server',
+      version: '1.0.0',
+      status: 'running',
+      endpoints: {
+        health: '/health',
+        rooms: '/api/rooms',
+        client: 'https://drinkredbull007.github.io/timer-client'
+      },
+      time: getServerTime()
+    });
+  }
+});
 
 // ==================== 启动 ====================
 
